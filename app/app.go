@@ -9,13 +9,23 @@ import (
 	"net/http"
 )
 
+type Handler struct {
+	customerHandler http.Handler
+}
+
 func Run(cfg config.Config) {
+	serveMux := http.NewServeMux()
+	h := Handler{
+		customerHandler: serveMux,
+	}
+
 	_, err := models.ConnectDb(cfg)
 	if err != nil {
 		log.Fatal("error DB: %+V", err)
 	}
 
-	http.HandleFunc("/echo", echo)
+	serveMux.HandleFunc("/echo", echo)
+	http.HandleFunc("/", h.defaultHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -47,4 +57,8 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
 
+}
+
+func (h *Handler) defaultHandler(w http.ResponseWriter, r *http.Request) {
+	h.customerHandler.ServeHTTP(w, r)
 }
