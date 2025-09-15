@@ -1,28 +1,30 @@
 package models
 
 import (
+	"backend/config"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type DB struct{
+type DB struct {
 	db *gorm.DB
 }
 
-func ConnectDb() (DB, error) {
+func ConnectDb(cfg config.Config) (DB, error) {
 
 	pg := postgres.New(
 		postgres.Config{
-			DSN: "host=localhost port=5555 user=user password=password dbname=ghibliApi",
+			DSN: "host=" + cfg.Host + " port=" + cfg.Port + " user=" + cfg.User_DB + " password=" + cfg.Password_DB + " dbname=" + cfg.Db_name,
 		},
 	)
 
 	db, err := gorm.Open(pg, &gorm.Config{})
-	if err != nil{
+	if err != nil {
 		return DB{}, err
 	}
 
 	return DB{
-		db : db,
+		db: db,
 	}, err
 }

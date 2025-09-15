@@ -1,15 +1,16 @@
 package app
 
 import (
+	"backend/config"
+	"backend/models"
 	"errors"
 	"io"
 	"log"
 	"net/http"
-	"backend/models"
 )
 
-func Run() {
-	_, err := models.ConnectDb()
+func Run(cfg config.Config) {
+	_, err := models.ConnectDb(cfg)
 	if err != nil {
 		log.Fatal("error DB: %+V", err)
 	}
