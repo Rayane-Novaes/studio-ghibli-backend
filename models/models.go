@@ -24,7 +24,13 @@ func ConnectDb(cfg config.Config) (DB, error) {
 		return DB{}, err
 	}
 
+	err = db.AutoMigrate(&user{})
+	if err != nil{
+		return DB{}, err
+	}
+
 	return DB{
 		db: db,
 	}, err
 }
+
