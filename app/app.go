@@ -3,9 +3,11 @@ package app
 import (
 	"backend/config"
 	"backend/models"
+	"context"
 	"errors"
 	"io"
 	"log"
+	"net"
 	"net/http"
 )
 
@@ -13,20 +15,30 @@ type Handler struct {
 	customerHandler http.Handler
 }
 
+
 func Run(cfg config.Config) {
 	serveMux := http.NewServeMux()
 	h := Handler{
 		customerHandler: serveMux,
 	}
 
-	_, err := models.ConnectDb(cfg)
+	db, err := models.ConnectDb(cfg)
 	if err != nil {
 		log.Fatal("error DB: %+V", err)
 	}
 
 	serveMux.HandleFunc("/echo", echo)
+	serveMux.HandleFunc("/create_user", createUser)
 	http.HandleFunc("/", h.defaultHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	s := http.Server{
+		Addr: ":8080",
+		ConnContext: func(ctx context.Context, c net.Conn) (context.Context){
+			return context.WithValue(ctx, "db", db)
+		},
+	}
+
+	log.Fatal(s.ListenAndServe())
 }
 
 func echo(w http.ResponseWriter, r *http.Request) {
@@ -62,3 +74,4 @@ func echo(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) defaultHandler(w http.ResponseWriter, r *http.Request) {
 	h.customerHandler.ServeHTTP(w, r)
 }
+

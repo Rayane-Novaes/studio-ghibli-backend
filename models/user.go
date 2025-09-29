@@ -2,9 +2,7 @@ package models
 
 import (
 	"errors"
-
 	"golang.org/x/crypto/bcrypt"
-	_ "golang.org/x/crypto/bcrypt"
 )
 
 type user struct {
