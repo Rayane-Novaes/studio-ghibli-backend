@@ -12,14 +12,17 @@ import (
 )
 
 type Handler struct {
-	customerHandler http.Handler
+	customerHandlerPublic  http.Handler
+	customerHandlerPrivate *http.ServeMux
 }
 
-
 func Run(cfg config.Config) {
-	serveMux := http.NewServeMux()
+	serveMuxPublic := http.NewServeMux()
+	serveMuxPrivate := http.NewServeMux()
+
 	h := Handler{
-		customerHandler: serveMux,
+		customerHandlerPublic:  serveMuxPublic,
+		customerHandlerPrivate: serveMuxPrivate,
 	}
 
 	db, err := models.ConnectDb(cfg)
@@ -27,13 +30,13 @@ func Run(cfg config.Config) {
 		log.Fatal("error DB: %+V", err)
 	}
 
-	serveMux.HandleFunc("/echo", echo)
-	serveMux.HandleFunc("/create_user", createUser)
+	serveMuxPrivate.HandleFunc("/echo", echo)
+	serveMuxPublic.HandleFunc("/create_user", createUser)
 	http.HandleFunc("/", h.defaultHandler)
 
 	s := http.Server{
 		Addr: ":8080",
-		ConnContext: func(ctx context.Context, c net.Conn) (context.Context){
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			return context.WithValue(ctx, "db", db)
 		},
 	}
@@ -72,6 +75,16 @@ func echo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) defaultHandler(w http.ResponseWriter, r *http.Request) {
-	h.customerHandler.ServeHTTP(w, r)
-}
+	_, pattern := h.customerHandlerPrivate.Handler(r)
+	if pattern != "" {
+		permission := authorization(r, w)
+		if permission != true {
+			return
+		}
 
+		h.customerHandlerPrivate.ServeHTTP(w, r)
+		return
+	}
+
+	h.customerHandlerPublic.ServeHTTP(w, r)
+}

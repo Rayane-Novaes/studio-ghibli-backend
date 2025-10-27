@@ -6,12 +6,12 @@ import (
 )
 
 type user struct {
-	ID uint `gorm:"primaryKey;autoIncrement"`
+	ID       uint   `gorm:"primaryKey;autoIncrement"`
 	Username string `gorm:"unique"`
-	Hash []byte
-} 
+	Hash     []byte
+}
 
-func CreateUser (db DB, username string, password []byte ) (error) {
+func CreateUser(db DB, username string, password []byte) error {
 	hash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -19,7 +19,7 @@ func CreateUser (db DB, username string, password []byte ) (error) {
 
 	user := user{
 		Username: username,
-		Hash: hash,
+		Hash:     hash,
 	}
 
 	err = db.db.Create(&user).Error
@@ -32,7 +32,7 @@ func CreateUser (db DB, username string, password []byte ) (error) {
 
 }
 
-func ValidUser (db DB, username string, password []byte) (error) {
+func ValidUser(db DB, username string, password []byte) error {
 	users := []user{}
 
 	err := db.db.Where(user{Username: username}).Find(&users).Error
@@ -49,6 +49,6 @@ func ValidUser (db DB, username string, password []byte) (error) {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }

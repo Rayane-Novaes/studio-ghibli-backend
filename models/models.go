@@ -25,7 +25,7 @@ func ConnectDb(cfg config.Config) (DB, error) {
 	}
 
 	err = db.AutoMigrate(&user{})
-	if err != nil{
+	if err != nil {
 		return DB{}, err
 	}
 
@@ -33,4 +33,3 @@ func ConnectDb(cfg config.Config) (DB, error) {
 		db: db,
 	}, err
 }
-

@@ -11,7 +11,7 @@ import (
 type User struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required,gte=12,lte=<=72,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,contaisany=0123456789,containsany=|@#%$^[]{}?!*~();."`
-	Email string `json:"email" binding:"required,email"`
+	Email    string `json:"email" binding:"required,email"`
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
@@ -33,13 +33,12 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	db, ok := r.Context().Value("db").(models.DB)
 	if ok != true {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
+
 	err = models.CreateUser(db, user.Username, []byte(user.Password))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -47,4 +46,28 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func authorization(r *http.Request, w http.ResponseWriter) bool {
+	username, password, ok := r.BasicAuth()
+
+	if ok != true {
+		w.WriteHeader(http.StatusUnauthorized)
+		return false
+	}
+
+	db, ok := r.Context().Value("db").(models.DB)
+	if ok != true {
+		w.WriteHeader(http.StatusInternalServerError)
+		return false
+	}
+
+	err := models.ValidUser(db, username, []byte(password))
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return false
+	}
+
+	return true
 }
