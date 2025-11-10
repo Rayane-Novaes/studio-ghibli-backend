@@ -32,6 +32,8 @@ func Run(cfg config.Config) {
 
 	serveMuxPrivate.HandleFunc("/echo", echo)
 	serveMuxPublic.HandleFunc("/create_user", createUser)
+	serveMuxPublic.HandleFunc("/request_reset_password", RequestResetPassword)
+	serveMuxPublic.HandleFunc("/reset_password", ResetPassword)
 	http.HandleFunc("/", h.defaultHandler)
 
 	s := http.Server{
