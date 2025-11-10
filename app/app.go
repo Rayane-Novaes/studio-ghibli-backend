@@ -7,55 +7,48 @@ import (
 	"errors"
 	"io"
 	"log"
-	"net"
 	"net/http"
+
+	"github.com/fvbock/endless"
+
+	"github.com/gin-gonic/gin"
 )
 
-type Handler struct {
-	customerHandlerPublic  http.Handler
-	customerHandlerPrivate *http.ServeMux
-}
-
 func Run(cfg config.Config) {
-	serveMuxPublic := http.NewServeMux()
-	serveMuxPrivate := http.NewServeMux()
-
-	h := Handler{
-		customerHandlerPublic:  serveMuxPublic,
-		customerHandlerPrivate: serveMuxPrivate,
-	}
-
+	router := gin.Default()
+	
+	// Adicionando conexão com o banco de dados ao contexto
 	db, err := models.ConnectDb(cfg)
 	if err != nil {
 		log.Fatal("error DB: %+V", err)
 	}
 
-	serveMuxPrivate.HandleFunc("/echo", echo)
-	serveMuxPublic.HandleFunc("/create_user", createUser)
-	serveMuxPublic.HandleFunc("/request_reset_password", RequestResetPassword)
-	serveMuxPublic.HandleFunc("/reset_password", ResetPassword)
-	http.HandleFunc("/", h.defaultHandler)
+	router.Use(func (c *gin.Context) {
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "db", db))
+		c.Next()
+	})
 
-	s := http.Server{
-		Addr: ":8080",
-		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			return context.WithValue(ctx, "db", db)
-		},
-	}
+	// Declarado rota privada que precisa de autorização
+	private := router.Group("/private")
+	private.Use(authorization)
+	private.POST("/echo", echo)
 
-	log.Fatal(s.ListenAndServe())
+	// Declarado rotas públicas
+	public := router.Group("/public")
+	public.POST("/create_user", createUser)
+	public.POST("/request_reset_password", RequestResetPassword)
+	public.POST("/reset_password", ResetPassword)
+
+	// Iniciando o servidor
+	endless.ListenAndServe(":8080", router)
 }
 
-func echo(w http.ResponseWriter, r *http.Request) {
+func echo(c *gin.Context) {
 	var body []byte
 	buffer := make([]byte, 4)
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	for {
-		num, err := r.Body.Read(buffer)
+		num, err := c.Request.Body.Read(buffer)
 
 		if num > 0 {
 			body = append(body, buffer[:num]...)
@@ -66,27 +59,12 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err != nil {
-			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+			c.Error(err)
+			c.JSON(http.StatusInternalServerError, "Failed to read request body")
 			return
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	c.JSON(http.StatusOK, string(body))
 
-}
-
-func (h *Handler) defaultHandler(w http.ResponseWriter, r *http.Request) {
-	_, pattern := h.customerHandlerPrivate.Handler(r)
-	if pattern != "" {
-		permission := authorization(r, w)
-		if permission != true {
-			return
-		}
-
-		h.customerHandlerPrivate.ServeHTTP(w, r)
-		return
-	}
-
-	h.customerHandlerPublic.ServeHTTP(w, r)
 }

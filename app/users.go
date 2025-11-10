@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	_ "github.com/sirupsen/logrus"
 )
 
 type User struct {
@@ -24,82 +26,85 @@ type ResetPasswordBody struct {
 	Password    string `json:"password" binding:"required,password"`
 }
 
-func createUser(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+func createUser(c *gin.Context) {
 	user := User{}
-	err := json.NewDecoder(r.Body).Decode(&user)
+	err := json.NewDecoder(c.Request.Body).Decode(&user)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
 	err = validator.New().Struct(&user)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
-	db, ok := r.Context().Value("db").(models.DB)
+	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
 	err = models.CreateUser(db, user.Username, []byte(user.Password), user.Email)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	c.JSON(http.StatusOK, nil)
 }
 
-func authorization(r *http.Request, w http.ResponseWriter) bool {
-	username, password, ok := r.BasicAuth()
+func authorization(c *gin.Context){
+
+	username, password, ok := c.Request.BasicAuth()
 
 	if ok != true {
-		w.WriteHeader(http.StatusUnauthorized)
-		return false
+		c.JSON(http.StatusUnauthorized, nil)
+		c.Abort()
+		return
 	}
 
-	db, ok := r.Context().Value("db").(models.DB)
+	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		w.WriteHeader(http.StatusInternalServerError)
-		return false
+		c.JSON(http.StatusInternalServerError, nil)
+		c.Abort()
+		return 
 	}
 
 	err := models.ValidUser(db, username, []byte(password))
 
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return false
+		c.JSON(http.StatusUnauthorized, nil)
+		c.Abort()
+		return
 	}
 
-	return true
+	c.Next()
+
 }
 
-func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
+func RequestResetPassword(c *gin.Context) {
 	email := RequestResetPasswordBody{}
-	err := json.NewDecoder(r.Body).Decode(&email)
+	err := json.NewDecoder(c.Request.Body).Decode(&email)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
 	err = validator.New().Struct(&email)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
 
-	db, ok := r.Context().Value("db").(models.DB)
+	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -108,32 +113,33 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 		// TODO: enviar email
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(pwd))
+	c.JSON(http.StatusOK, pwd)
 }
 
-func ResetPassword(w http.ResponseWriter, r *http.Request) {
+func ResetPassword(c *gin.Context) {
 	reset := ResetPasswordBody{}
-	err := json.NewDecoder(r.Body).Decode(&reset)
+	err := json.NewDecoder(c.Request.Body).Decode(&reset)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, nil)
 		return
 	}
-
-	db, ok := r.Context().Value("db").(models.DB)
+	
+	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
 	err = models.ResetPassword(db, reset.Email, reset.NewPassword, reset.Password)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.Error(err)
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	c.JSON(http.StatusOK, nil)
 }
 
 /*
