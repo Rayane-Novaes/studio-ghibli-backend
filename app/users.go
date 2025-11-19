@@ -4,6 +4,7 @@ import (
 	"backend/models"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -12,7 +13,7 @@ import (
 
 type User struct {
 	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required,gte=12,lte=<=72,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,contaisany=0123456789,containsany=|@#%$^[]{}?!*~();."`
+	Password string `json:"password" binding:"required,gte=12,lte=<=72"`
 	Email    string `json:"email" binding:"required,email"`
 }
 
@@ -22,23 +23,26 @@ type RequestResetPasswordBody struct {
 
 type ResetPasswordBody struct {
 	Email       string `json:"email" binding:"required,email"`
-	NewPassword string `json:"new_password" binding:"required,gte=12,lte=<=72,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,contaisany=0123456789,containsany=|@#%$^[]{}?!*~();."`
+	NewPassword string `json:"new_password" binding:"required,gte=12,lte=<=72"`
 	Password    string `json:"password" binding:"required,password"`
 }
 
 func createUser(c *gin.Context) {
 	user := User{}
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
+	err := c.BindJSON(&user)
 	if err != nil {
-		c.Error(err)
-		c.JSON(http.StatusBadRequest, nil)
+		SendBindError(c, err)
 		return
 	}
-
-	err = validator.New().Struct(&user)
-	if err != nil {
-		c.Error(err)
-		c.JSON(http.StatusBadRequest, nil)
+	
+	validatorPassword := ValidatorPassword(user.Password)
+	if !validatorPassword {
+		c.JSON(http.StatusBadRequest, ValidationError {
+			Error: "Validation Errors",
+			Values: map[string]string{
+				"password": "password must have at least: [A-Z], [a-z], [0-9], [|@#%$^[]{}?!*~();.]",
+			},
+		})
 		return
 	}
 
@@ -118,10 +122,20 @@ func RequestResetPassword(c *gin.Context) {
 
 func ResetPassword(c *gin.Context) {
 	reset := ResetPasswordBody{}
-	err := json.NewDecoder(c.Request.Body).Decode(&reset)
+	err := c.BindJSON(&reset)
 	if err != nil {
-		c.Error(err)
-		c.JSON(http.StatusBadRequest, nil)
+		SendBindError(c, err)
+		return
+	}
+
+	validatorPassword := ValidatorPassword(reset.NewPassword)
+	if !validatorPassword {
+		c.JSON(http.StatusBadRequest, ValidationError {
+			Error: "Validation Errors",
+			Values: map[string]string{
+				"new_password": "password must have at least: [A-Z], [a-z], [0-9], [|@#%$^[]{}?!*~();.]",
+			},
+		})
 		return
 	}
 	
@@ -142,6 +156,12 @@ func ResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
+func ValidatorPassword (password string) (bool) {
+	return strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
+		strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") &&
+		strings.ContainsAny(password, "|@#%$^[]{}?!*~();.") &&
+		strings.ContainsAny(password, "0123456789")
+}
 /*
 	Requisição do reset: input (email). Gerar um código unico por usuário
 	Reset

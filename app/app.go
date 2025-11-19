@@ -10,9 +10,15 @@ import (
 	"net/http"
 
 	"github.com/fvbock/endless"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/gin-gonic/gin"
 )
+
+type ValidationError struct {
+	Error string `json:"error"`
+	Values map[string]string `json:"values"`
+}
 
 func Run(cfg config.Config) {
 	router := gin.Default()
@@ -66,5 +72,33 @@ func echo(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, string(body))
+
+}
+
+func SendBindError(c *gin.Context, err error) {
+	var valErr validator.ValidationErrors
+	
+	// Adicionando o erro ao contexto
+	c.Error(err)
+	
+	// Tentado converter o error em um validation errors
+	// Se não conseguir retorna um erro generico
+	ok := errors.As(err, &valErr)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Extrair os erros de validação, adiciona no mapa 
+	values := make(map[string]string)
+	for _, value := range valErr {
+		values[value.StructField()] = value.Error()
+	}
+
+	// retorna o erro
+	c.JSON(http.StatusBadRequest, ValidationError {
+		Error: "validation error",
+		Values: values,
+	})
 
 }
