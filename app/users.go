@@ -2,18 +2,19 @@ package app
 
 import (
 	"backend/models"
-	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-	_ "github.com/sirupsen/logrus"
+	mailjet "github.com/mailjet/mailjet-apiv3-go"
 )
 
 type User struct {
 	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required,gte=12,lte=<=72"`
+	Password string `json:"password" binding:"required,gte=12,lte=72"`
 	Email    string `json:"email" binding:"required,email"`
 }
 
@@ -23,11 +24,12 @@ type RequestResetPasswordBody struct {
 
 type ResetPasswordBody struct {
 	Email       string `json:"email" binding:"required,email"`
-	NewPassword string `json:"new_password" binding:"required,gte=12,lte=<=72"`
-	Password    string `json:"password" binding:"required,password"`
+	NewPassword string `json:"new_password" binding:"required,gte=12,lte=72"`
+	Password    string `json:"password" binding:"required"`
 }
 
 func createUser(c *gin.Context) {
+	// Lendo a requisição e validando
 	user := User{}
 	err := c.BindJSON(&user)
 	if err != nil {
@@ -48,13 +50,15 @@ func createUser(c *gin.Context) {
 
 	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		c.JSON(http.StatusInternalServerError, nil)
+		c.Error(errors.New("failed db connection"))
+		c.JSON(http.StatusInternalServerError, "failed to create user")
 		return
 	}
 
 	err = models.CreateUser(db, user.Username, []byte(user.Password), user.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, nil)
+		c.Error(err)
+		c.JSON(http.StatusInternalServerError, "failed to create user")
 		return
 	}
 
@@ -65,15 +69,17 @@ func authorization(c *gin.Context){
 
 	username, password, ok := c.Request.BasicAuth()
 
-	if ok != true {
-		c.JSON(http.StatusUnauthorized, nil)
+	if !ok {
+		c.Error(errors.New("error failed usermanem and password"))
+		c.JSON(http.StatusUnauthorized, "Unauthorized")
 		c.Abort()
 		return
 	}
 
 	db, ok := c.Request.Context().Value("db").(models.DB)
-	if ok != true {
-		c.JSON(http.StatusInternalServerError, nil)
+	if !ok {
+		c.Error(errors.New("failed db connection"))
+		c.JSON(http.StatusInternalServerError, "Unauthorized")
 		c.Abort()
 		return 
 	}
@@ -81,7 +87,8 @@ func authorization(c *gin.Context){
 	err := models.ValidUser(db, username, []byte(password))
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, nil)
+		c.Error(err)
+		c.JSON(http.StatusUnauthorized, "Unauthorized")
 		c.Abort()
 		return
 	}
@@ -91,33 +98,68 @@ func authorization(c *gin.Context){
 }
 
 func RequestResetPassword(c *gin.Context) {
-	email := RequestResetPasswordBody{}
-	err := json.NewDecoder(c.Request.Body).Decode(&email)
+	email := RequestResetPasswordBody{}	
+	err := c.BindJSON(&email)
 	if err != nil {
-		c.Error(err)
-		c.JSON(http.StatusBadRequest, nil)
-		return
-	}
-
-	err = validator.New().Struct(&email)
-	if err != nil {
-		c.Error(err)
-		c.JSON(http.StatusBadRequest, nil)
+		SendBindError(c, err)
 		return
 	}
 
 	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		c.JSON(http.StatusInternalServerError, nil)
+		c.Error(errors.New("Failed connect db"))
+		c.JSON(http.StatusInternalServerError, "failed to request password reset")
 		return
 	}
 
-	pwd, err := models.UpdateUserPasswordReset(db, email.Email)
+	pwd, username, err := models.UpdateUserPasswordReset(db, email.Email)
 	if err == nil {
-		// TODO: enviar email
+		err = SendEmail(c, email.Email, username, pwd)
+		if err != nil {
+			c.Error(err)
+		}
 	}
 
 	c.JSON(http.StatusOK, pwd)
+}
+
+func SendEmail (c *gin.Context, email string, username string, passwordTemp string) (error) {
+	m, ok := c.Request.Context().Value("mailjet").(*mailjet.Client)
+	if !ok {
+		return errors.New("failed mailjet client")
+	}
+
+	email_sender, ok := c.Request.Context().Value("email").(string)
+	if !ok {
+		return errors.New("failed email sender")
+	}
+
+	link := "http:localhost:3000/reset_password?email=" + url.QueryEscape(email) + "&temp_password=" + url.QueryEscape(passwordTemp) 
+
+	messagesInfo := []mailjet.InfoMessagesV31 {
+      mailjet.InfoMessagesV31{
+        From: &mailjet.RecipientV31{
+          Email: email_sender,
+          Name: "Teste",
+        },
+        To: &mailjet.RecipientsV31{
+          mailjet.RecipientV31 {
+            Email: email,
+            Name: username,
+          },
+        },
+        Subject: "Reset password",
+        TextPart: "We just received a new reset password request for this account. If you don't regonize this request, ignore this email.\n\nOtherwise, click on this link to reset your password:" + link,
+      },
+    }
+
+	messages := mailjet.MessagesV31{Info: messagesInfo }
+	res, err := m.SendMailV31(&messages)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Data: %+v\n", res)
+	return nil
 }
 
 func ResetPassword(c *gin.Context) {
@@ -141,7 +183,8 @@ func ResetPassword(c *gin.Context) {
 	
 	db, ok := c.Request.Context().Value("db").(models.DB)
 	if ok != true {
-		c.JSON(http.StatusInternalServerError, nil)
+		c.Error(errors.New("Failed connect db"))
+		c.JSON(http.StatusInternalServerError, "failed to reset password")
 		return
 	}
 
@@ -149,7 +192,7 @@ func ResetPassword(c *gin.Context) {
 
 	if err != nil {
 		c.Error(err)
-		c.JSON(http.StatusInternalServerError, nil)
+		c.JSON(http.StatusInternalServerError, "failed to reset password")
 		return
 	}
 

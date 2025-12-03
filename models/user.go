@@ -10,9 +10,9 @@ import (
 )
 
 type user struct {
-	ID        uint   `gorm:"primaryKey;autoIncrement,not null"`
-	Username  string `gorm:"unique,not null"`
-	Email     string `gorm:"unique,not null"`
+	ID        uint   `gorm:"primaryKey;autoIncrement;not null"`
+	Username  string `gorm:"unique;not null"`
+	Email     string `gorm:"unique;not null"`
 	Hash      []byte
 	ResetCode []byte
 	ResetDate *time.Time `gorm:"default:null"`
@@ -61,29 +61,32 @@ func ValidUser(db DB, username string, password []byte) error {
 	return nil
 }
 
-func UpdateUserPasswordReset(db DB, email string) (string, error) {
+func UpdateUserPasswordReset(db DB, email string) (pwd string, username string, err error) {
 	var pwd_raw [16]byte
 	rand.Read(pwd_raw[:])
-	pwd := base64.URLEncoding.EncodeToString(pwd_raw[:])
+	pwd = base64.URLEncoding.EncodeToString(pwd_raw[:])
 	user_got := user{}
-	err := db.db.Where(user{Email: email}).Take(&user_got).Error
+	// Take: Pega a primeira coluna que der match
+	err = db.db.Where(user{Email: email}).Take(&user_got).Error
 	if err != nil {
-		return pwd, err
+		return
 	}
 
 	date := time.Now()
 	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
 
 	if err != nil {
-		return pwd, err
+		return
 	}
 
 	err = db.db.Where(user{ID: user_got.ID}).Updates(user{ResetCode: hash, ResetDate: &date}).Error
 	if err != nil {
-		return pwd, err
+		return
 	}
 
-	return pwd, nil
+	username = user_got.Username
+
+	return
 }
 
 func ResetPassword(db DB, email string, new_password string, hash_code string) error {
@@ -102,7 +105,7 @@ func ResetPassword(db DB, email string, new_password string, hash_code string) e
 		return errors.New("password reset expired")
 	}
 
-	err = bcrypt.CompareHashAndPassword(user_temp.ResetCode, []byte(new_password))
+	err = bcrypt.CompareHashAndPassword(user_temp.ResetCode, []byte(hash_code))
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/gin-gonic/gin"
+	mailjet "github.com/mailjet/mailjet-apiv3-go"
 )
 
 type ValidationError struct {
@@ -29,8 +30,13 @@ func Run(cfg config.Config) {
 		log.Fatal("error DB: %+V", err)
 	}
 
+	// servidor de email
+	mailjetClient := mailjet.NewMailjetClient(cfg.MJ_APIKEY_PUBLIC, cfg.MJ_APIKEY_PRIVATE)
+	
 	router.Use(func (c *gin.Context) {
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "db", db))
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "mailjet", mailjetClient))
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "email", cfg.Email_Sender))
 		c.Next()
 	})
 
