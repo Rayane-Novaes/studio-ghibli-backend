@@ -24,7 +24,7 @@ func ConnectDb(cfg config.Config) (DB, error) {
 		return DB{}, err
 	}
 
-	err = db.AutoMigrate(&user{})
+	err = db.AutoMigrate(&user{}, &Movie{})
 	if err != nil {
 		return DB{}, err
 	}
@@ -32,4 +32,13 @@ func ConnectDb(cfg config.Config) (DB, error) {
 	return DB{
 		db: db,
 	}, err
+}
+
+func Create(db DB, resouce any) error {
+	err := db.db.Create(resouce).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -17,13 +17,13 @@ import (
 )
 
 type ValidationError struct {
-	Error string `json:"error"`
+	Error  string            `json:"error"`
 	Values map[string]string `json:"values"`
 }
 
 func Run(cfg config.Config) {
 	router := gin.Default()
-	
+
 	// Adicionando conexão com o banco de dados ao contexto
 	db, err := models.ConnectDb(cfg)
 	if err != nil {
@@ -32,8 +32,8 @@ func Run(cfg config.Config) {
 
 	// servidor de email
 	mailjetClient := mailjet.NewMailjetClient(cfg.MJ_APIKEY_PUBLIC, cfg.MJ_APIKEY_PRIVATE)
-	
-	router.Use(func (c *gin.Context) {
+
+	router.Use(func(c *gin.Context) {
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "db", db))
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "mailjet", mailjetClient))
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "email", cfg.Email_Sender))
@@ -44,6 +44,7 @@ func Run(cfg config.Config) {
 	private := router.Group("/private")
 	private.Use(authorization)
 	private.POST("/echo", echo)
+	private.POST("/create_movie", createMovie)
 
 	// Declarado rotas públicas
 	public := router.Group("/public")
@@ -83,10 +84,10 @@ func echo(c *gin.Context) {
 
 func SendBindError(c *gin.Context, err error) {
 	var valErr validator.ValidationErrors
-	
+
 	// Adicionando o erro ao contexto
 	c.Error(err)
-	
+
 	// Tentado converter o error em um validation errors
 	// Se não conseguir retorna um erro generico
 	ok := errors.As(err, &valErr)
@@ -95,15 +96,15 @@ func SendBindError(c *gin.Context, err error) {
 		return
 	}
 
-	// Extrair os erros de validação, adiciona no mapa 
+	// Extrair os erros de validação, adiciona no mapa
 	values := make(map[string]string)
 	for _, value := range valErr {
 		values[value.StructField()] = value.Error()
 	}
 
 	// retorna o erro
-	c.JSON(http.StatusBadRequest, ValidationError {
-		Error: "validation error",
+	c.JSON(http.StatusBadRequest, ValidationError{
+		Error:  "validation error",
 		Values: values,
 	})
 
