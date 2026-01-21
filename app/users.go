@@ -28,6 +28,16 @@ type ResetPasswordBody struct {
 	Password    string `json:"password" binding:"required"`
 }
 
+// CreateUser godoc
+// @Summary Create a new user
+// @Description Create a new user
+// @Tags Users
+// @Produce json
+// @Param request body User true "the request body"
+// @Success 204 "Success"
+// @Failure 400 {object} ValidationError "Bad Request: Some validation error occurred"
+// @Failure 500 {string} string "Internal Server Error: Some unexpected error occurred"
+// @Router /public/create_user [post]
 func createUser(c *gin.Context) {
 	// Lendo a requisição e validando
 	user := User{}
@@ -97,6 +107,16 @@ func authorization(c *gin.Context) {
 
 }
 
+// RequestResetPassword godoc
+// @Summary Request reset password
+// @Description Request reset password
+// @Tags Request Reset Password
+// @Produce json
+// @Param request body RequestResetPasswordBody true "the request body"
+// @Success 204 "Success"
+// @Failure 400 {object} ValidationError "Bad Request: Some validation error occurred"
+// @Failure 500 {string} string "Internal Server Error: Some unexpected error occurred"
+// @Router /public/request_reset_password [post]
 func RequestResetPassword(c *gin.Context) {
 	email := RequestResetPasswordBody{}
 	err := c.BindJSON(&email)
@@ -162,6 +182,16 @@ func SendEmail(c *gin.Context, email string, username string, passwordTemp strin
 	return nil
 }
 
+// RequestResetPassword godoc
+// @Summary Request reset password
+// @Description Request reset password
+// @Tags Request Reset Password
+// @Produce json
+// @Param request body ResetPasswordBody true "the request body"
+// @Success 204 "Success"
+// @Failure 400 {object} ValidationError "Bad Request: Some validation error occurred"
+// @Failure 500 {string} string "Internal Server Error: Some unexpected error occurred"
+// @Router /public/reset_password [post]
 func ResetPassword(c *gin.Context) {
 	reset := ResetPasswordBody{}
 	err := c.BindJSON(&reset)

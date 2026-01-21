@@ -14,6 +14,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	mailjet "github.com/mailjet/mailjet-apiv3-go"
+
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"backend/docs"
 )
 
 type ValidationError struct {
@@ -33,6 +38,10 @@ func Run(cfg config.Config) {
 	// servidor de email
 	mailjetClient := mailjet.NewMailjetClient(cfg.MJ_APIKEY_PUBLIC, cfg.MJ_APIKEY_PRIVATE)
 
+	// Configure the swagger description.
+	docs.SwaggerInfo.Title = "Studio Ghibli API"
+	docs.SwaggerInfo.Description = "Studio Ghibli API"
+
 	router.Use(func(c *gin.Context) {
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "db", db))
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "mailjet", mailjetClient))
@@ -48,6 +57,7 @@ func Run(cfg config.Config) {
 
 	// Declarado rotas públicas
 	public := router.Group("/public")
+	public.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	public.POST("/create_user", createUser)
 	public.POST("/request_reset_password", RequestResetPassword)
 	public.POST("/reset_password", ResetPassword)

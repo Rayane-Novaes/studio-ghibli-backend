@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// @securityDefinitions.basic BasicAuth
 func main() {
 	fmt.Println("INICIO")
 	cfg, err := config.LoadConfig()
