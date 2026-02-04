@@ -10,8 +10,12 @@ type Movie struct {
 	Director     string   `json:"director" binding:"required" gorm:"not null"`
 	Producer     string   `json:"producer" binding:"required" gorm:"not null"`
 	ReleaseDate  string   `json:"release_date" binding:"required" gorm:"index:idx_movie,unique;not null"`
-	Duration     Duration `json:"duration" binding:"required" gorm:"not null"`
+	Duration     Duration `json:"duration" binding:"required" gorm:"not null" swaggertype:"string"`
 	BannerImagem string   `json:"banner_image" binding:"required,base64" gorm:"not null"`
+}
+
+func (m *Movie) GetId() uint {
+	return m.ID
 }
 
 type Duration time.Duration

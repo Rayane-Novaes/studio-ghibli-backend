@@ -42,7 +42,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "204": {
                         "description": "Success"
                     },
                     "400": {
@@ -99,9 +99,121 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/public/request_reset_password": {
+            "post": {
+                "description": "Request reset password",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Request Reset Password"
+                ],
+                "summary": "Request reset password",
+                "parameters": [
+                    {
+                        "description": "the request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.RequestResetPasswordBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Success"
+                    },
+                    "400": {
+                        "description": "Bad Request: Some validation error occurred",
+                        "schema": {
+                            "$ref": "#/definitions/app.ValidationError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error: Some unexpected error occurred",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/public/reset_password": {
+            "post": {
+                "description": "Request reset password",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Request Reset Password"
+                ],
+                "summary": "Request reset password",
+                "parameters": [
+                    {
+                        "description": "the request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.ResetPasswordBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Success"
+                    },
+                    "400": {
+                        "description": "Bad Request: Some validation error occurred",
+                        "schema": {
+                            "$ref": "#/definitions/app.ValidationError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error: Some unexpected error occurred",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "app.RequestResetPasswordBody": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.ResetPasswordBody": {
+            "type": "object",
+            "required": [
+                "email",
+                "new_password",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 12
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
         "app.User": {
             "type": "object",
             "required": [
@@ -137,46 +249,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Duration": {
-            "type": "integer",
-            "format": "int64",
-            "enum": [
-                -9223372036854775808,
-                9223372036854775807,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000,
-                -9223372036854775808,
-                9223372036854775807,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000
-            ],
-            "x-enum-varnames": [
-                "minDuration",
-                "maxDuration",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour",
-                "minDuration",
-                "maxDuration",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour"
-            ]
-        },
         "models.Movie": {
             "type": "object",
             "required": [
@@ -195,7 +267,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "duration": {
-                    "$ref": "#/definitions/models.Duration"
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"

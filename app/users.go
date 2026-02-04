@@ -38,7 +38,7 @@ type ResetPasswordBody struct {
 // @Failure 400 {object} ValidationError "Bad Request: Some validation error occurred"
 // @Failure 500 {string} string "Internal Server Error: Some unexpected error occurred"
 // @Router /public/create_user [post]
-func createUser(c *gin.Context) {
+func (r RouteData) createUser(c *gin.Context) {
 	// Lendo a requisição e validando
 	user := User{}
 	err := c.BindJSON(&user)
@@ -58,14 +58,7 @@ func createUser(c *gin.Context) {
 		return
 	}
 
-	db, ok := c.Request.Context().Value("db").(models.DB)
-	if ok != true {
-		c.Error(errors.New("failed db connection"))
-		c.JSON(http.StatusInternalServerError, "failed to create user")
-		return
-	}
-
-	err = models.CreateUser(db, user.Username, []byte(user.Password), user.Email)
+	err = models.CreateUser(r.db, user.Username, []byte(user.Password), user.Email)
 	if err != nil {
 		c.Error(err)
 		c.JSON(http.StatusInternalServerError, "failed to create user")
@@ -75,7 +68,7 @@ func createUser(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func authorization(c *gin.Context) {
+func (r RouteData) authorization(c *gin.Context) {
 
 	username, password, ok := c.Request.BasicAuth()
 
@@ -86,15 +79,7 @@ func authorization(c *gin.Context) {
 		return
 	}
 
-	db, ok := c.Request.Context().Value("db").(models.DB)
-	if !ok {
-		c.Error(errors.New("failed db connection"))
-		c.JSON(http.StatusInternalServerError, "Unauthorized")
-		c.Abort()
-		return
-	}
-
-	err := models.ValidUser(db, username, []byte(password))
+	err := models.ValidUser(r.db, username, []byte(password))
 
 	if err != nil {
 		c.Error(err)
@@ -117,7 +102,7 @@ func authorization(c *gin.Context) {
 // @Failure 400 {object} ValidationError "Bad Request: Some validation error occurred"
 // @Failure 500 {string} string "Internal Server Error: Some unexpected error occurred"
 // @Router /public/request_reset_password [post]
-func RequestResetPassword(c *gin.Context) {
+func (r RouteData) RequestResetPassword(c *gin.Context) {
 	email := RequestResetPasswordBody{}
 	err := c.BindJSON(&email)
 	if err != nil {
@@ -125,16 +110,9 @@ func RequestResetPassword(c *gin.Context) {
 		return
 	}
 
-	db, ok := c.Request.Context().Value("db").(models.DB)
-	if ok != true {
-		c.Error(errors.New("Failed connect db"))
-		c.JSON(http.StatusInternalServerError, "failed to request password reset")
-		return
-	}
-
-	pwd, username, err := models.UpdateUserPasswordReset(db, email.Email)
+	pwd, username, err := models.UpdateUserPasswordReset(r.db, email.Email)
 	if err == nil {
-		err = SendEmail(c, email.Email, username, pwd)
+		err = r.SendEmail(email.Email, username, pwd)
 		if err != nil {
 			c.Error(err)
 		}
@@ -143,23 +121,14 @@ func RequestResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, pwd)
 }
 
-func SendEmail(c *gin.Context, email string, username string, passwordTemp string) error {
-	m, ok := c.Request.Context().Value("mailjet").(*mailjet.Client)
-	if !ok {
-		return errors.New("failed mailjet client")
-	}
-
-	email_sender, ok := c.Request.Context().Value("email").(string)
-	if !ok {
-		return errors.New("failed email sender")
-	}
+func (r RouteData) SendEmail(email string, username string, passwordTemp string) error {
 
 	link := "http:localhost:3000/reset_password?email=" + url.QueryEscape(email) + "&temp_password=" + url.QueryEscape(passwordTemp)
 
 	messagesInfo := []mailjet.InfoMessagesV31{
 		mailjet.InfoMessagesV31{
 			From: &mailjet.RecipientV31{
-				Email: email_sender,
+				Email: r.email,
 				Name:  "Teste",
 			},
 			To: &mailjet.RecipientsV31{
@@ -174,7 +143,7 @@ func SendEmail(c *gin.Context, email string, username string, passwordTemp strin
 	}
 
 	messages := mailjet.MessagesV31{Info: messagesInfo}
-	res, err := m.SendMailV31(&messages)
+	res, err := r.mailjet.SendMailV31(&messages)
 	if err != nil {
 		return err
 	}
@@ -192,7 +161,7 @@ func SendEmail(c *gin.Context, email string, username string, passwordTemp strin
 // @Failure 400 {object} ValidationError "Bad Request: Some validation error occurred"
 // @Failure 500 {string} string "Internal Server Error: Some unexpected error occurred"
 // @Router /public/reset_password [post]
-func ResetPassword(c *gin.Context) {
+func (r RouteData) ResetPassword(c *gin.Context) {
 	reset := ResetPasswordBody{}
 	err := c.BindJSON(&reset)
 	if err != nil {
@@ -211,14 +180,7 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	db, ok := c.Request.Context().Value("db").(models.DB)
-	if ok != true {
-		c.Error(errors.New("Failed connect db"))
-		c.JSON(http.StatusInternalServerError, "failed to reset password")
-		return
-	}
-
-	err = models.ResetPassword(db, reset.Email, reset.NewPassword, reset.Password)
+	err = models.ResetPassword(r.db, reset.Email, reset.NewPassword, reset.Password)
 
 	if err != nil {
 		c.Error(err)

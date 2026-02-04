@@ -3,7 +3,6 @@ package app
 import (
 	"backend/config"
 	"backend/models"
-	"context"
 	"errors"
 	"io"
 	"log"
@@ -26,6 +25,13 @@ type ValidationError struct {
 	Values map[string]string `json:"values"`
 }
 
+type RouteData struct {
+	db         models.DB
+	mailjet    *mailjet.Client
+	email      string
+	skip_image bool
+}
+
 func Run(cfg config.Config) {
 	router := gin.Default()
 
@@ -42,25 +48,26 @@ func Run(cfg config.Config) {
 	docs.SwaggerInfo.Title = "Studio Ghibli API"
 	docs.SwaggerInfo.Description = "Studio Ghibli API"
 
-	router.Use(func(c *gin.Context) {
-		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "db", db))
-		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "mailjet", mailjetClient))
-		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), "email", cfg.Email_Sender))
-		c.Next()
-	})
+	data := RouteData{
+		db:         db,
+		mailjet:    mailjetClient,
+		email:      cfg.Email_Sender,
+		skip_image: cfg.Skip_Image_Validation && cfg.Local,
+	}
 
 	// Declarado rota privada que precisa de autorização
 	private := router.Group("/private")
-	private.Use(authorization)
+	private.Use(data.authorization)
 	private.POST("/echo", echo)
-	private.POST("/create_movie", createMovie)
+	private.POST("/create_movie", data.createMovie)
 
 	// Declarado rotas públicas
 	public := router.Group("/public")
 	public.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	public.POST("/create_user", createUser)
-	public.POST("/request_reset_password", RequestResetPassword)
-	public.POST("/reset_password", ResetPassword)
+	public.POST("/create_user", data.createUser)
+	public.POST("/request_reset_password", data.RequestResetPassword)
+	public.POST("/reset_password", data.ResetPassword)
+	public.GET("/list_movies", data.listMovie)
 
 	// Iniciando o servidor
 	endless.ListenAndServe(":8080", router)
