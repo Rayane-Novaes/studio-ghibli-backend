@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	Host                  string `env:"HOST,notEmpty"`
+	Host_DB               string `env:"HOST_DB,notEmpty"`
 	User_DB               string `env:"USER_DB,notEmpty"`
 	Password_DB           string `env:"PASSWORD_DB,notEmpty"`
 	Db_name               string `env:"DB_NAME,notEmpty"`
@@ -14,7 +14,7 @@ type Config struct {
 	Email_Sender          string `env:"EMAIL_SENDER,notEmpty"`
 	Local                 bool   `env:"LOCAL"`
 	Skip_Image_Validation bool   `env:"SKIP_IMAGE_VALIDATION"`
-	Port                  string `env:"PORT,notEmpty"`
+	Port_DB               string `env:"PORT_DB,notEmpty"`
 }
 
 func LoadConfig() (Config, error) {

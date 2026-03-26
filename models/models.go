@@ -26,7 +26,7 @@ func ConnectDb(cfg config.Config) (DB, error) {
 
 	pg := postgres.New(
 		postgres.Config{
-			DSN: "host=" + cfg.Host + " port=" + cfg.Port + " user=" + cfg.User_DB + " password=" + cfg.Password_DB + " dbname=" + cfg.Db_name,
+			DSN: "host=" + cfg.Host_DB + " port=" + cfg.Port_DB + " user=" + cfg.User_DB + " password=" + cfg.Password_DB + " dbname=" + cfg.Db_name,
 		},
 	)
 

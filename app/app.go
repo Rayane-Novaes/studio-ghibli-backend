@@ -33,6 +33,13 @@ type RouteData struct {
 }
 
 func Run(cfg config.Config) {
+	router := setup(cfg)
+
+	// Iniciando o servidor
+	endless.ListenAndServe(":8080", router)
+}
+
+func setup(cfg config.Config) http.Handler {
 	router := gin.Default()
 
 	// Adicionando conexão com o banco de dados ao contexto
@@ -69,8 +76,7 @@ func Run(cfg config.Config) {
 	public.POST("/reset_password", data.ResetPassword)
 	public.GET("/list_movies", data.listMovie)
 
-	// Iniciando o servidor
-	endless.ListenAndServe(":8080", router)
+	return router
 }
 
 func echo(c *gin.Context) {
