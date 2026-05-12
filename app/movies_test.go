@@ -26,7 +26,7 @@ func TestListMoviesEmpty(t *testing.T) {
 	require.NotNil(t, result.Data)
 }
 
-// TestListMoviesWithCursor testa a listagem de filmes com cursor
+// TestListMoviesWithCursor testa a listagem de filmes com paginação
 func TestListMoviesWithCursor(t *testing.T) {
 	response := SendRequest(t, "GET", "/public/list_movies?cursor=", nil, nil)
 
@@ -41,7 +41,7 @@ func TestListMoviesWithCursor(t *testing.T) {
 	require.NotNil(t, result.Data)
 }
 
-// TestCreateMovieSuccess testa a criação de um filme com dados válidos
+// TestCreateMovieSuccess testa a criação de um filme com certos
 func TestCreateMovieSuccess(t *testing.T) {
 	// Criar uma imagem base64 válida (PNG 1x1 pixel)
 	validBase64Image := "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
@@ -55,9 +55,8 @@ func TestCreateMovieSuccess(t *testing.T) {
 		BannerImagem: validBase64Image,
 	}
 
-	// Criar header com autenticação básica
 	headers := map[string]string{
-		"Authorization": "Basic dXNlcjpwYXNz", // user:pass em base64
+		"Authorization": "Basic dXNlcjpwYXNz",
 	}
 
 	response := SendRequest(t, "POST", "/private/create_movie", headers, movie)
@@ -65,7 +64,6 @@ func TestCreateMovieSuccess(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, response.StatusCode)
 }
 
-// TestCreateMovieInvalidImage testa a criação de um filme com imagem inválida
 func TestCreateMovieInvalidImage(t *testing.T) {
 	// String base64 inválida que não é uma imagem
 	invalidBase64Image := base64.StdEncoding.EncodeToString([]byte("not an image"))
@@ -98,7 +96,6 @@ func TestCreateMovieInvalidImage(t *testing.T) {
 
 // TestCreateMovieMissingFields testa a criação de um filme sem campos obrigatórios
 func TestCreateMovieMissingFields(t *testing.T) {
-	// Movie sem o campo Name (obrigatório)
 	incompleteMovie := map[string]interface{}{
 		"director":     "Hayao Miyazaki",
 		"producer":     "Toshio Suzuki",
