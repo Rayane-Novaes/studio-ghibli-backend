@@ -15,6 +15,8 @@ type Config struct {
 	Local                 bool   `env:"LOCAL"`
 	Skip_Image_Validation bool   `env:"SKIP_IMAGE_VALIDATION"`
 	Port_DB               string `env:"PORT_DB,notEmpty"`
+	Google_Client_ID       string `env:"GOOGLE_CLIENT_ID,notEmpty"`
+	Google_Client_Secret   string `env:"GOOGLE_CLIENT_SECRET,notEmpty"`
 }
 
 func LoadConfig() (Config, error) {

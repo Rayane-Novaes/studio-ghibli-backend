@@ -10,6 +10,7 @@ import (
 
 	"github.com/fvbock/endless"
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/oauth2"
 
 	"github.com/gin-gonic/gin"
 	mailjet "github.com/mailjet/mailjet-apiv3-go"
@@ -30,6 +31,10 @@ type RouteData struct {
 	mailjet    *mailjet.Client
 	email      string
 	skip_image bool
+	google_client_id string
+	google_client_secret string
+	oauth2Config *oauth2.Config
+	oauth2Verifier string
 }
 
 func Run(cfg config.Config) {
@@ -60,6 +65,8 @@ func setup(cfg config.Config) http.Handler {
 		mailjet:    mailjetClient,
 		email:      cfg.Email_Sender,
 		skip_image: cfg.Skip_Image_Validation && cfg.Local,
+		google_client_id:     cfg.Google_Client_ID,
+		google_client_secret: cfg.Google_Client_Secret,
 	}
 
 	// Declarado rota privada que precisa de autorização
@@ -67,6 +74,7 @@ func setup(cfg config.Config) http.Handler {
 	private.Use(data.authorization)
 	private.POST("/echo", echo)
 	private.POST("/create_movie", data.createMovie)
+	
 
 	// Declarado rotas públicas
 	public := router.Group("/public")
@@ -75,6 +83,8 @@ func setup(cfg config.Config) http.Handler {
 	public.POST("/request_reset_password", data.RequestResetPassword)
 	public.POST("/reset_password", data.ResetPassword)
 	public.GET("/list_movies", data.listMovie)
+	public.GET("/oauth", data.oauth)
+	public.GET("/oauth/callback", data.oauthCallback)
 
 	return router
 }

@@ -50,7 +50,7 @@ func main() {
 			scope.UserinfoProfileScope,
 		},
 		Endpoint:     google.Endpoint,
-		RedirectURL:  "http://localhost:8080/auth/google/callback",
+		RedirectURL:  "http://localhost:8080/oauth/callback",
 	}
 
 	// use PKCE to protect against CSRF attacks
@@ -60,7 +60,7 @@ func main() {
 	url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, oauth2.S256ChallengeOption(verifier))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/auth/google/callback", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 
 		tok, err := conf.Exchange(ctx, code, oauth2.VerifierOption(verifier))
